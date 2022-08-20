@@ -1,3 +1,5 @@
+//ref:
+//https://www.digikey.com/en/maker/projects/introduction-to-rtos-solution-to-part-6-freertos-mutex-example/c6e3581aa2204f1380e83a9b4c3807a6
 //----------------------------------------------------- operation
 //1 task
 //setup() passes address of a local var. to task using xTaskCreatePinnedToCore()
