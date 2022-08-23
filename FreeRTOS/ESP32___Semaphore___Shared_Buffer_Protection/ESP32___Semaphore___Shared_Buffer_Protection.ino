@@ -6,6 +6,9 @@
 //goal: protect buffer using mutexes and semaphores
 //need 2 separate semaphores + 1 mutex
 //2 modes -> semaphores & queues
+//***************************************************** findings
+//why do we need 2 semaphores?
+//-> 1 for producer signaling, 1 for consumer signaling
 //***************************************************** includes
 //#include <semphr.h>                                 //vanilla FreeRTOS
 //***************************************************** only 1 core
