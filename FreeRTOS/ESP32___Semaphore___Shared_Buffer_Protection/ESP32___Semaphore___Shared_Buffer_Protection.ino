@@ -1,3 +1,5 @@
+//ref:
+//https://www.digikey.com/en/maker/projects/introduction-to-rtos-solution-to-part-7-freertos-semaphore-example/51aa8660524c4daba38cba7c2f5baba7
 //***************************************************** operations
 //shared resource -> circular buffer
 //5 tasks add val. to circular buffer -> producers
