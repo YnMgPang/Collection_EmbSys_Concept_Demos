@@ -4,11 +4,16 @@
 //1 task
 //setup() passes address of a local var. to task using xTaskCreatePinnedToCore()
 //original code -> setup() ends before task gets to read the var. local to setup()
-//goal: use a mutex to prevent pre-mature exiting of stup() --> ***not conventional use of mutex***
+//goal: use a mutex to prevent pre-mature exiting of stup()
+//
+//
+//***not conventional use of mutex***
+//
+//
 //----------------------------------------------------- knowledge
 //Semaphore and mutex are implemented very similarly in FreeRTOS.
-//----------------------------------------------------- needed include for vanilla FreeRTOS
-//#include semphr.h
+//----------------------------------------------------- includes
+//#include semphr.h                                   //vanilla FreeRTOS
 //----------------------------------------------------- only 1 core -> config found in a FreeRTOS file
 #if CONFIG_FREERTOS_UNICORE
 static const BaseType_t app_cpu = 0;
