@@ -1,14 +1,10 @@
 //ref:
 //https://www.digikey.com/en/maker/projects/introduction-to-rtos-solution-to-part-9-hardware-interrupts/3ae7a68462584e1eb408e1638002e9ed
-//****************************************************** operation
+//***************************************************** operation
 //timer ISR reads adc pin
 //timer signals task using semaphore
 //task prints adc values
-//****************************************************** findings
-//BUG -> check below
-//****************************************************** includes
-//#include semphr.h                                   // vanilla
-//****************************************************** only 1 core
+//***************************************************** only 1 core
 #if CONFIG_FREERTOS_UNICORE
   static const BaseType_t app_cpu = 0;
 #else
@@ -21,18 +17,15 @@ static const uint16_t timer_divider = 80;             // ESP32 base clock = 80MH
 static const uint64_t timer_max_count = 1000000;
 //****************************************************** var.
 static hw_timer_t *timer = NULL;                      // ESP32 HAL timer -> comes w/ Arduino lib.
-static volatile uint16_t val = 0;                     // protect -> val. might change outside the scope of current task???
-static volatile int valTwo = 0;
+static volatile uint16_t val;
 static SemaphoreHandle_t bin_sem = NULL;
 //static portMUX_TYPE spinlock = portMUX_INITIALIZER_UNLOCKED;  //for critical section in ISR
 //****************************************************** ISR
 void IRAM_ATTR onTimer(){                             // attribute qualifier -> put in RAM -> faster
 
   BaseType_t task_woken = pdFALSE;
-  //val = analogRead(adc_pin);
-  //val = hallRead();
-  valTwo = hallRead();                                // ****** BUG ******
-                                                      // no. mostly -ve, does not react
+  val = analogRead(adc_pin);
+  
   xSemaphoreGiveFromISR(bin_sem, &task_woken);
 
   if (task_woken){                                    // ESP-IDF yield() takes no arg.
@@ -50,15 +43,15 @@ void IRAM_ATTR onTimer(){                             // attribute qualifier -> 
   //taskEXIT_CRITICAL_FROM_ISR(saved_int_status);
 
 }
-//****************************************************** task
-//------------------------------------------------------ task A
+//***************************************************** task
+//----------------------------------------------------- task A
 void printValues(void *parameters){
   while(1){
-    xSemaphoreTake(bin_sem, portMAX_DELAY);          // wait indef. for go-ahead
-    Serial.println(valTwo);
+    xSemaphoreTake(bin_sem, portMAX_DELAY);
+    Serial.println(val);
   }
 }
-//****************************************************** main
+//***************************************************** main
 void setup() {
 
   Serial.begin(115200);
@@ -80,7 +73,7 @@ void setup() {
                           app_cpu
                          );
   
-  //pinMode(adc_pin, OUTPUT);                           // pin config
+  //pinMode(led_pin, OUTPUT);                           // pin config
   //---------------------------------------------------- timer
   timer = timerBegin(0, timer_divider, true);         // create + start -> (num, divider, countUp?)
   timerAttachInterrupt(timer, &onTimer, true);        // provide ISR -> (..., ..., edgeTrig?)
