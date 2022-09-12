@@ -74,7 +74,7 @@ void setup() {
   if (handle_timer == NULL){
     Serial.println("********* Timer Creation Error *********");                                                                                    
   }else{
-    Serial.println("********* Time Created *********");
+    Serial.println("********* Timer Created *********");
   }
   //--------------------------------------------------- start task
   xTaskCreatePinnedToCore(serialListener,

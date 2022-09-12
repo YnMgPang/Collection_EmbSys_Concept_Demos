@@ -9,8 +9,10 @@
 //need 2 separate semaphores + 1 mutex
 //2 modes -> semaphores & queues
 //***************************************************** findings
-//why do we need 2 semaphores?
+//>>>why do we need 2 semaphores?
 //-> 1 for producer signaling, 1 for consumer signaling
+//>>>semaphore ensures readign won't be faster than writing
+//-> overwrite by fast writing still possible -> keep "giving" semaphore
 //***************************************************** includes
 //#include <semphr.h>                                 //vanilla FreeRTOS
 //***************************************************** only 1 core
@@ -26,8 +28,8 @@ static const int num_cons_tasks = 2;                  //number of consumer tasks
 static const int num_writes = 3;                      //num times each producer writes to buf
 //----------------------------------------------------- globals
 static int buf[BUF_SIZE];                             //shared buffer
-static int head = 0;                                  //writing index to buffer
-static int tail = 0;                                  //reading index to buffer
+static int head = 0;                                  //writing index to buffer (should be the other way around in usual case)
+static int tail = 0;                                  //reading index to buffer (should be the other way around in usual case)
 static SemaphoreHandle_t bin_sem;                     //waits for parameter to be read
 //----------------------------------------------------- semaphore & mutex
 static SemaphoreHandle_t handle_semaphore_filled;
