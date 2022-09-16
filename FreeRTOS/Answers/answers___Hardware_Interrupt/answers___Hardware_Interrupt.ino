@@ -1,14 +1,18 @@
 //ref: https://www.digikey.com/en/maker/projects/introduction-to-rtos-solution-to-part-9-hardware-interrupts/3ae7a68462584e1eb408e1638002e9ed
 //****************************************************** operations
-//concepts: double buffer, semaphore, queue
+//concepts: double buffer, semaphore, queue, FreeRTOS task notif.
+
 //timer ISR writes to buffer A/B 10 times/1sec
 //-> check buffer overrun
 //-> send notif./give semaphore when written 10 times
+
 //calcAvg task wait for available notif./semaphore
 //-> write to avg
 //-> check buffer overrun msg
 //-> give done_reading semaphore
+
 //serial task handles serial terminal I/O
+
 //*** swap() only when done_writing(idx >= BUF_LEN check) && done_reading(semaphore check), not just done reading
 //****************************************************** includes
 // #include semphr.h                                   // vanilla
@@ -20,35 +24,38 @@
 #endif
 //****************************************************** settings
 static const char command[] = "avg";                  // command
+static const uint32_t cli_delay = 20;                 // ms delay
+enum { CMD_BUF_LEN = 255};                            // number of characters in command buffer
+
 static const uint16_t timer_divider = 8;              // divide 80 MHz by this
 static const uint64_t timer_max_count = 1000000;      // timer counts to this value -> 0.1s = 1 million / (80 Mhz / 8)
-static const uint32_t cli_delay = 20;                 // ms delay
+
 enum { BUF_LEN = 10 };                                // number of elements in sample buffer
 enum { MSG_LEN = 100 };                               // max characters in message body
 enum { MSG_QUEUE_LEN = 5 };                           // number of slots in message queue
-enum { CMD_BUF_LEN = 255};                            // number of characters in command buffer
 //------------------------------------------------------ pins
 static const int adc_pin = A0;
-//****************************************************** message struct to wrap strings for queue
+//------------------------------------------------------ message struct to wrap strings for queue
 typedef struct Message {
   char body[MSG_LEN];
 } Message;
 //****************************************************** var.
-//------------------------------------------------------ global
+//------------------------------------------------------ interrupt + hw. timer
 static hw_timer_t *timer = NULL;
-static TaskHandle_t processing_task = NULL;
-
+//------------------------------------------------------ access control & signaling
+static TaskHandle_t processing_task = NULL;           // for notification
 static SemaphoreHandle_t sem_done_reading = NULL;
 static portMUX_TYPE spinlock = portMUX_INITIALIZER_UNLOCKED;
-
+//------------------------------------------------------ serial
 static QueueHandle_t msg_queue;
 
 static volatile uint16_t buf_0[BUF_LEN];              // one buffer in the pair
 static volatile uint16_t buf_1[BUF_LEN];              // the other buffer in the pair
 static volatile uint16_t* write_to = buf_0;           // double buffer write pointer
 static volatile uint16_t* read_from = buf_1;          // double buffer read pointer
-static volatile uint8_t buf_overrun = 0;              // double buffer overrun flag -> true: write is too fast
-
+static volatile uint8_t buf_overrun = 0;              // = 1 when can't take sem_done_reading
+                                                      // double buffer overrun flag -> true: write is too fast
+                                                      // only for serial error msg signaling -> not necessary feature?
 static float adc_avg;                                             
 //****************************************************** functions that can be called from anywhere (in this file)
                                                       // swap the write_to and read_from pointers in the double buffer
@@ -88,6 +95,17 @@ void IRAM_ATTR onTimer() {                            // this function executes 
       swap();                                         // swap buffer pointers
   
       vTaskNotifyGiveFromISR(processing_task, &task_woken);     // task notification works like a binary semaphore but faster
+      //****** Why not use flag here? ******
+      //ISR -> flag = 1
+      //task -> flag == 1?
+      //task -> flag = 0
+      //if flag == 1
+      //>>>>>>>>> interrupt can happen here <<<<<<<<<
+      //flag = 0
+      //-> if flag is 1 when calcAvg checks
+      //-> ISR interrupts and "changes"/"sets" flag to 1
+      //-> calcAvg sets flag to 0 at end of processing
+      //-> loss of data
     }
 
 //    //-------------------------------------------------- TEST: use only semaphore
@@ -105,8 +123,14 @@ void IRAM_ATTR onTimer() {                            // this function executes 
 //****************************************************** tasks
 //------------------------------------------------------ serial terminal task
 void doCLI(void *parameters) {
+  //-------------- process queue
+  //-------------- process serial
+  //--------------1)check w/ buffer length limit
+  //--------------2)echo
+  //--------------3)check w/ cmd && print avg
 
-  Message rcv_msg;
+  Message rcv_msg;                                    // for queue
+  
   char c;
   char cmd_buf[CMD_BUF_LEN];
   uint8_t idx = 0;
@@ -204,7 +228,7 @@ void setup() {
   }
 
   xSemaphoreGive(sem_done_reading);                   // we want the done reading semaphore to initialize to 1
-
+  //---------------------------------------------------- queue
   msg_queue = xQueueCreate(MSG_QUEUE_LEN, sizeof(Message));   // create message queue before it is used
 
                                                       // start task to handle command line interface events

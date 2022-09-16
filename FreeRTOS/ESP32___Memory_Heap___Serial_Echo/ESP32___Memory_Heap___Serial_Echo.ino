@@ -19,7 +19,7 @@ static const BaseType_t app_cpu = 1;
 //int message = 100;
 //char *string_message = (char *)malloc(sizeof(char) * numberMessageBytes_max);
 char *ptrString = NULL;
-uint8_t maxPrintBytes = 32;
+uint8_t maxPrintBytes = 5;
 volatile uint8_t msgReady = 0;
 //----------------------------------------------------- Task A -> read
 void task_serialListener(void *ptr) {
